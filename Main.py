@@ -17,6 +17,10 @@ import seaborn as sns
 import tensorflow as tf
 from sklearn.metrics import log_loss, accuracy_score
 
+#Make the features into tensorflow columns
+def construct_feature_columns():
+
+    return set([tf.feature_column.numeric_column('pixels', shape=784)])
 #Seperates the data and returns all of the features as well as the labels
 def parse_data(data):
     labels = data['label']
@@ -39,6 +43,7 @@ def create_training_input_fn(features, labels, batch_size, num_epochs = None, sh
 
         if shuffle:
             ds = ds.shuffle(10000)
+        
         feature_batch, label_batch = ds.make_one_shot_iterator().get_next()
         return feature_batch, label_batch
     return input_fn_
@@ -67,20 +72,17 @@ def train_nn_classification(
     validation_examples,
     validation_targets):
 
-    periods = 10
+    periods = 5
     steps_per_period = steps/periods
     predict_training_input_fn = create_predict_input_fn(training_examples, training_targets, batch_size)
     predict_validation_input_fn = create_predict_input_fn(validation_examples, validation_targets, batch_size)
     training_input_fn = create_training_input_fn(training_examples, training_targets, batch_size)
 
-    #Make tensorflow input columns
-    feature_columns = [tf.feature_column.numeric_column('pixels', shape=784)]
-
     #Create a the relevant classifier
     my_optimizer = tf.train.AdagradOptimizer(learning_rate=learning_rate)
     my_optimizer = tf.contrib.estimator.clip_gradients_by_norm(my_optimizer, 5.0)
     classifier = tf.estimator.DNNClassifier(
-        feature_columns=feature_columns,
+        feature_columns=construct_feature_columns(),
         n_classes=10,
         hidden_units=hidden_units,
         optimizer=my_optimizer,
@@ -94,7 +96,9 @@ def train_nn_classification(
     training_errors = []
     validation_errors = []
     for period in range (0, periods):
-        classifier.train(input_fn = training_input_fn, steps = steps_per_period)
+        classifier.train(
+            input_fn = training_input_fn, 
+            steps = steps_per_period)
 
         #Compute the probabilities for training set
         training_predictions = list(classifier.predict(input_fn=predict_training_input_fn))
@@ -153,13 +157,14 @@ data = data.reindex(np.random.permutation(data.index))
 #print(data.describe())
 
 #Take the data and make train and validation  and test pools
-training_labels, training_features = parse_data(data[:28000])
+training_labels, training_features = parse_data(data[:100])
 #print(training_features.describe())
 
-validation_labels, validation_features = parse_data(data[28000:38000])
+validation_labels, validation_features = parse_data(data[100:120])
 #print(validation_features.describe())
 
-test_labels, test_features = parse_data(data[38000:42000])
+test_labels, test_features = parse_data(data[120:130])
+
 
 classifier = train_nn_classification(
     learning_rate = 0.05,
