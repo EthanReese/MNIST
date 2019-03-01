@@ -25,7 +25,7 @@ def construct_feature_columns():
 def parse_data(data):
     labels = data['label']
     #Pull out the features and scale from [0,1]
-    features = data.iloc[1:784]
+    features = data.iloc[:,1:784]
     features = features/255
     return labels, features
 #Make a relevant input function for training given features, labels and batch size
@@ -33,19 +33,17 @@ def create_training_input_fn(features, labels, batch_size, num_epochs = None, sh
     
     #Create the function to return
     def input_fn_(num_epochs=None, shuffle=True):
-        #Shuffle up the data to be safe
-        idx = np.random.permutation(features.index)
-        raw_features = {"pixels":features.reindex(idx)}
-        raw_targets = np.array(labels[idx])
+        raw_features = {"pixel": features.values}
+        raw_targets = np.array(labels)
 
-        ds = tf.data.Dataset.from_tensor_slices((raw_features, raw_targets))
+        
+        ds = tf.data.Dataset.from_tensor_slices((dict(raw_features), raw_targets))
         ds = ds.batch(batch_size).repeat(num_epochs)
 
         if shuffle:
             ds = ds.shuffle(10000)
         
-        feature_batch, label_batch = ds.make_one_shot_iterator().get_next()
-        return feature_batch, label_batch
+        return ds.make_one_shot_iterator().get_next()
     return input_fn_
 #Create an input function to use with the testing data
 def create_predict_input_fn(features, labels, batch_size):
@@ -58,7 +56,8 @@ def create_predict_input_fn(features, labels, batch_size):
         ds = ds.batch(batch_size)
         
         feature_batch, label_batch = ds.make_one_shot_iterator().get_next()
-        return feature_batch, label_batch
+        print(feature_batch, label_batch)
+        return tf.convert_to_tensor(feature_batch), tf.convert_to_tensor(label_batch)
     return input_fn_
 
 #Function used to train neural network
@@ -72,7 +71,7 @@ def train_nn_classification(
     validation_examples,
     validation_targets):
 
-    periods = 5
+    periods = 10
     steps_per_period = steps/periods
     predict_training_input_fn = create_predict_input_fn(training_examples, training_targets, batch_size)
     predict_validation_input_fn = create_predict_input_fn(validation_examples, validation_targets, batch_size)
@@ -170,7 +169,7 @@ classifier = train_nn_classification(
     learning_rate = 0.05,
     steps = 1000,
     batch_size = 30,
-    hidden_units = [110,100],
+    hidden_units = [100,100],
     training_examples = training_features,
     training_targets = training_labels,
     validation_examples = validation_features,
