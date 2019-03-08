@@ -20,7 +20,7 @@ from sklearn.metrics import log_loss, accuracy_score
 #Make the features into tensorflow columns
 def construct_feature_columns():
 
-    return set([tf.feature_column.numeric_column('pixels', shape=784)])
+    return set([tf.feature_column.numeric_column(key='pixels', shape=784)])
 #Seperates the data and returns all of the features as well as the labels
 def parse_data(data):
     labels = data['label']
@@ -33,10 +33,10 @@ def create_training_input_fn(features, labels, batch_size, num_epochs = None, sh
     
     #Create the function to return
     def input_fn_(num_epochs=None, shuffle=True):
-        raw_features = {"pixel": features.values}
-        raw_targets = np.array(labels)
+        idx = np.random.permutation(features.index)
+        raw_features = {"pixels":features.reindex(idx)}
+        raw_targets = np.array(labels[idx])
 
-        
         ds = tf.data.Dataset.from_tensor_slices((dict(raw_features), raw_targets))
         ds = ds.batch(batch_size).repeat(num_epochs)
 
@@ -49,15 +49,14 @@ def create_training_input_fn(features, labels, batch_size, num_epochs = None, sh
 def create_predict_input_fn(features, labels, batch_size):
     #returns the features and labels for the predictor
     def input_fn_():
-        raw_features = {"pixels": features.values}
+        raw_features = {"pixel": features.values}
         raw_targets = np.array(labels)
 
         ds = tf.data.Dataset.from_tensor_slices((raw_features, raw_targets))
         ds = ds.batch(batch_size)
-        
+
         feature_batch, label_batch = ds.make_one_shot_iterator().get_next()
-        print(feature_batch, label_batch)
-        return tf.convert_to_tensor(feature_batch), tf.convert_to_tensor(label_batch)
+        return feature_batch, label_batch
     return input_fn_
 
 #Function used to train neural network
@@ -78,7 +77,7 @@ def train_nn_classification(
     training_input_fn = create_training_input_fn(training_examples, training_targets, batch_size)
 
     #Create a the relevant classifier
-    my_optimizer = tf.train.AdagradOptimizer(learning_rate=learning_rate)
+    my_optimizer = tf.train.AdadeltaOptimizer(learning_rate=learning_rate)
     my_optimizer = tf.contrib.estimator.clip_gradients_by_norm(my_optimizer, 5.0)
     classifier = tf.estimator.DNNClassifier(
         feature_columns=construct_feature_columns(),
@@ -95,9 +94,7 @@ def train_nn_classification(
     training_errors = []
     validation_errors = []
     for period in range (0, periods):
-        classifier.train(
-            input_fn = training_input_fn, 
-            steps = steps_per_period)
+        classifier.train(input_fn = training_input_fn, steps = steps_per_period)
 
         #Compute the probabilities for training set
         training_predictions = list(classifier.predict(input_fn=predict_training_input_fn))
@@ -148,7 +145,7 @@ def train_nn_classification(
     plt.xlabel("Predicted label")
     plt.show()
 
-    return classifier    
+    return classifier
 
 #Take the csv file in and turn into dataframe with randomized order
 data = pd.read_csv('/Users/Ethan/Devel/Python/MNIST/data/train.csv')
@@ -156,7 +153,7 @@ data = data.reindex(np.random.permutation(data.index))
 #print(data.describe())
 
 #Take the data and make train and validation  and test pools
-training_labels, training_features = parse_data(data[:100])
+training_labels, training_features = parse_data(data[1:100])
 #print(training_features.describe())
 
 validation_labels, validation_features = parse_data(data[100:120])
