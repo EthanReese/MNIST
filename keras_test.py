@@ -57,7 +57,7 @@ p = {'lr': (0.5, 5, 10),
      'emb_output_dims': [None],
      'shape':['brick','long_funnel'],
      'optimizer': ['Adam', 'Nadam', 'RMSprop'],
-     'losses': ['logcosh', 'binary_crossentropy'],
+     'losses': ['logcosh'],
      'activation':['relu', 'elu'],
      'last_activation': ['sigmoid']}
 
