@@ -51,7 +51,7 @@ x_test = x_test/255"""
 p = {'lr': (0.5, 5, 10),
      'first_neuron':[4, 8, 16, 32, 64],
      'batch_size': (2, 30, 10),
-     'epochs': [150],
+     'epochs': [40],
      'dropout': (0, 0.5, 5),
      'weight_regulizer':[None],
      'emb_output_dims': [None],
